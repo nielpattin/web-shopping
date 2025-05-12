@@ -2,18 +2,68 @@ import express, { json } from 'express';
 import mongoose, { Schema } from 'mongoose'; 
 import { Search, Ingest } from 'sonic-channel';
 import 'dotenv/config'
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import pinoHttp from 'pino-http';
+import pino from 'pino';
 
-console.log('--- Environment Variables ---');
-console.log('MONGO_URI:', process.env.MONGO_URI);
-console.log('SONIC_HOST:', process.env.SONIC_HOST);
-console.log('SONIC_PORT:', process.env.SONIC_PORT);
-console.log('SONIC_AUTH:', process.env.SONIC_AUTH);
-console.log('---------------------------');
+const logger = pino({
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true
+    }
+  }
+});
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+logger.info('--- Environment Variables ---');
+logger.info(`MONGO_URI: ${process.env.MONGO_URI}`);
+logger.info(`SONIC_HOST: ${process.env.SONIC_HOST}`);
+logger.info(`SONIC_PORT: ${process.env.SONIC_PORT}`);
+logger.info(`SONIC_AUTH: ${process.env.SONIC_AUTH}`);
+logger.info('---------------------------');
 
 const app = express();
-const port = 3000;
+const port = 3001;
 
+app.use(pinoHttp({
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true
+    }
+  },
+  serializers: {
+    req(req) {
+      if (process.env.NODE_ENV === "development") {
+        return {
+          method: req.method,
+          url: req.url,
+        };
+      } else {
+        // For production or other environments, keep the concise logging
+        return {
+          id: req.id,
+          method: req.method,
+          url: req.url,
+          remoteAddress: req.remoteAddress,
+        };
+      }
+    },
+    res(res) {
+      return {
+        statusCode: res.statusCode
+        // Add specific response headers if needed
+      };
+    }
+  }
+}));
 app.use(json());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Configuration ---
 const MONGO_URI = process.env.MONGO_URI
@@ -38,9 +88,9 @@ const Item = mongoose.model('Item', itemSchema, COLLECTION_NAME);
 async function connectToMongo() {
   try {
     await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
-    console.log('Connected to MongoDB using Mongoose');
+    logger.info('Connected to MongoDB');
   } catch (err) {
-    console.error('Failed to connect to MongoDB', err);
+    logger.error('Failed to connect to MongoDB', err);
     process.exit(1);
   }
 }
@@ -49,118 +99,228 @@ async function connectToMongo() {
 let sonicIngest;
 let sonicSearch;
 
-function connectToSonic() {
-  sonicIngest = new Ingest({
-    host: SONIC_HOST,
-    port: SONIC_PORT,
-    auth: SONIC_AUTH,
-  }).connect({
-    connected: () => console.log('Sonic Ingest connected!'),
-    error: (err) => console.error('Sonic Ingest connection error:', err),
-    disconnected: () => console.error('Sonic Ingest disconnected'),
-    timeout: () => console.error('Sonic Ingest timeout'),
-    retrying: () => console.error('Sonic Ingest retrying...'),
-  });
-
-  sonicSearch = new Search({
-    host: SONIC_HOST,
-    port: SONIC_PORT,
-    auth: SONIC_AUTH,
-  }).connect({
-    connected: () => console.log('Sonic Search connected!'),
-    error: (err) => console.error('Sonic Search connection error:', err),
-    disconnected: () => console.error('Sonic Search disconnected'),
-    timeout: () => console.error('Sonic Search timeout'),
-    retrying: () => console.error('Sonic Search retrying...'),
-  });
-}
-
 // --- Express Routes ---
 
-// Endpoint to add/update an item (and ingest into Sonic)
-app.post('/items', async (req, res) => {
-  const { name, description, price, category } = req.body;
-
-  if (!name || !description) {
-    return res.status(400).json({ error: 'Name and description are required' });
-  }
-
-  try {
-    // 1. Save to MongoDB
-    // Create new document
-    const newItem = new Item({ 
-      name,
-      description,
-      price: parseFloat(price) || 0,
-      category,
-    });
-    const savedItem = await newItem.save(); // Save document
-    const itemId = savedItem._id.toString(); // Get ID from saved document
-
-    // 2. Ingest into Sonic
-    // Use the item's name and description for searching.
-    const searchableText = `${name} ${description} ${category || ''}`;
-    await sonicIngest.push(
-      'items', // collection
-      'default', // bucket
-      itemId, // Use MongoDB's _id as the Sonic object ID
-      searchableText.trim()
-    );
-
-    console.log(`Item ${itemId} ingested into Sonic.`);
-    res.status(201).json({ message: 'Item added successfully', itemId, ...savedItem.toObject() });
-  } catch (err) {
-    console.error('Error adding item:', err);
-    res.status(500).json({ error: 'Failed to add item' });
-  }
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Endpoint to search for items
+// Endpoint for item search when user types 
 app.get('/search', async (req, res) => {
   const { q } = req.query;
 
-  if (!q) {
-    return res.status(400).json({ error: 'Search query "q" is required' });
+  if (!q || q.toString().trim() === '') {
+    return res.json([]);
   }
 
   try {
-    // 1. Query Sonic
-    const sonicResults = await sonicSearch.query(
-      'items', // collection
-      'default', // bucket
-      q.toString()
-    );
+    const incomingQueryString = q.toString().trim().toLowerCase();
+    const queryWords = incomingQueryString.split(/\s+/).filter(word => word.length > 0); // Split into words and remove empty strings
 
-    console.log('Sonic search results (IDs):', sonicResults);
-
-    if (!sonicResults || sonicResults.length === 0) {
+    if (queryWords.length === 0) {
       return res.json([]);
     }
-    
-    // Fetch items from MongoDB using the IDs returned by Sonic
-    const items = await Item.find({ _id: { $in: sonicResults } }).lean(); 
 
-    // Optional: Maintain the order returned by Sonic if it's relevant
-    const orderedItems = sonicResults.map(id => items.find(item => item._id.toString() === id)).filter(item => item);
+    logger.info(`Searching for words: "${queryWords.join('", "')}"`);
 
-    res.json(orderedItems);
-  } catch (err) {
-    console.error('Error searching items:', err);
-    if (err.message && err.message.includes('ERR_QUERY_INVALID_LIMIT_OFFSET')) {
-        return res.status(400).json({ error: 'Invalid search parameters for Sonic.', details: err.message });
+    let objectIds = new Set();
+
+    for (const word of queryWords) {
+      try {
+        const searchResults = await sonicSearch.query(
+          'items',           // collection
+          'search',          // using dedicated search bucket
+          word,              // query string (single word)
+          10,                // limit results per word (can be adjusted)
+          0                  // offset
+        );
+        if (searchResults && searchResults.length > 0) {
+          searchResults.forEach(id => objectIds.add(id));
+          logger.info(`Found ${searchResults.length} IDs for "${word}": ${searchResults.join(', ')}`);
+        } else {
+          logger.info(`No Sonic results for "${word}"`);
+        }
+      } catch (err) {
+        logger.error(`Error getting search results from Sonic for "${word}":`, err);
+      }
     }
-    res.status(500).json({ error: 'Failed to search items' });
+    logger.info(`Total unique Object IDs from Sonic: ${objectIds.size}`);
+
+    if (objectIds.size > 0) {
+      const idArray = Array.from(objectIds);
+
+      const products = await Item.find({
+        _id: { $in: idArray }
+      }).select('name').lean();
+
+      const productNames = products.map(product => product.name);
+      logger.info(`Returning ${productNames.length} product search results (all matches found by Sonic for the query terms)`);
+      res.json(productNames);
+    } else {
+      logger.info('No search results found from Sonic for any query word');
+      res.json([]);
+    }
+  } catch (err) {
+    logger.error('Error getting search results:', err);
+    res.status(500).json({ error: 'Failed to get search results' });
   }
 });
 
 // --- Start Server ---
 async function startServer() {
   await connectToMongo();
-  connectToSonic(); // Sonic connections are asynchronous, they will log their status
+  
+  // Connect to Sonic and wait for connection to be established
+  let isConnectedIngest = false;
+  let isConnectedSearch = false;
+  
+  // Set up connection event listeners before connecting
+  const sonicConnected = new Promise((resolve, reject) => {
+    // Store original event listeners
+    const origIngestEvents = {
+      connected: () => logger.info('Sonic Ingest connected!'),
+      error: (err) => logger.error('Sonic Ingest connection error:', err),
+    };
+    
+    const origSearchEvents = {
+      connected: () => logger.info('Sonic Search connected!'),
+      error: (err) => logger.error('Sonic Search connection error:', err),
+    };
+    
+    // Create the Ingest instance with modified handlers
+    sonicIngest = new Ingest({
+      host: SONIC_HOST,
+      port: SONIC_PORT,
+      auth: SONIC_AUTH,
+    }).connect({
+      connected: () => {
+        origIngestEvents.connected();
+        isConnectedIngest = true;
+        checkBothConnected();
+      },
+      error: (err) => {
+        origIngestEvents.error(err);
+        if (!isConnectedIngest) {
+          reject(new Error('Failed to connect to Sonic Ingest: ' + err.message)); // Use err.message
+        }
+      },
+      disconnected: () => logger.error('Sonic Ingest disconnected'),
+      timeout: () => logger.error('Sonic Ingest timeout'),
+      retrying: () => logger.warn('Sonic Ingest retrying...'), // warn for retrying
+    });
+    
+    // Create the Search instance with modified handlers
+    sonicSearch = new Search({
+      host: SONIC_HOST,
+      port: SONIC_PORT,
+      auth: SONIC_AUTH,
+    }).connect({
+      connected: () => {
+        origSearchEvents.connected();
+        isConnectedSearch = true;
+        checkBothConnected();
+      },
+      error: (err) => {
+        origSearchEvents.error(err);
+        if (!isConnectedSearch) {
+          reject(new Error('Failed to connect to Sonic Search: ' + err.message)); // Use err.message
+        }
+      },
+      disconnected: () => logger.error('Sonic Search disconnected'),
+      timeout: () => logger.error('Sonic Search timeout'),
+      retrying: () => logger.warn('Sonic Search retrying...'), // warn for retrying
+    });
+    
+    // Function to check if both connections are established
+    function checkBothConnected() {
+      if (isConnectedIngest && isConnectedSearch) {
+        logger.info('Both Sonic Ingest and Search connections established!');
+        resolve(true);
+      }
+    }
+    
+    // Set a timeout in case connections take too long
+    setTimeout(() => {
+      if (!isConnectedIngest || !isConnectedSearch) {
+        logger.warn('Sonic connection timed out after 10 seconds, proceeding anyway...');
+        logger.warn(`Connection status: Ingest=${isConnectedIngest}, Search=${isConnectedSearch}`);
+        resolve(false); // Resolve false as it's proceeding
+      }
+    }, 10000);
+  });
+  
+  // Wait for Sonic to connect before proceeding
+  await sonicConnected;
+  
+  // Only import if we have both connections
+  if (isConnectedIngest && isConnectedSearch) {
+    // Import existing MongoDB data into Sonic
+    await importMongoDataToSonic();
+  } else {
+    logger.warn('Skipping Sonic import because one or more Sonic connections failed.');
+  }
 
   app.listen(port, () => {
-    console.log(`Shoppe API server listening at http://localhost:${port}`);
+    logger.info(`Shoppe API server listening at http://localhost:${port}`);
   });
+}
+
+// Function to import all MongoDB data into Sonic
+async function importMongoDataToSonic() {
+  try {
+    logger.info('Importing MongoDB data into Sonic...');
+    
+    // Get all items from MongoDB
+    const items = await Item.find({}).lean();
+    
+    if (items.length === 0) {
+      logger.info('No items found in MongoDB to import.');
+      return;
+    }
+    
+    logger.info(`Found ${items.length} items in MongoDB. Starting import to Sonic...`);
+    
+    // First, let's flush the existing collection to avoid duplicates
+    try {
+      await sonicIngest.flushc('items');
+      logger.info('Flushed existing Sonic collection.');
+    } catch (err) {
+      // If collection doesn't exist yet, that's fine
+      logger.info('Could not flush Sonic collection (it may not exist yet).');
+    }
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    // Push each item to Sonic
+    for (const item of items) {
+        const itemId = item._id.toString();
+        try {
+          await sonicIngest.push(
+            'items',            // collection
+            'search',           // special bucket for search
+            itemId,             // object ID
+            item.name.toLowerCase()           // Full product name (lowercase)
+          );
+          
+          // logger.info(`Added product name to search: "${fullName}" for item ${itemId}`);
+        } catch (err) {
+          logger.error(`Error adding search for item ${item._id}:`, err);
+          errorCount++; 
+        }
+        
+        successCount++; // Counts items for which an import attempt was made
+        
+        // Log progress for every 100 items attempted
+        if (successCount % 100 === 0) {
+          logger.info(`Attempted import for ${successCount} items to Sonic...`);
+        }
+    }
+    
+    logger.info(`Sonic import completed. Attempted items: ${successCount}, Errors during push: ${errorCount}`);
+  } catch (err) {
+    logger.error('Error during Sonic import:', err);
+  }
 }
 
 startServer();

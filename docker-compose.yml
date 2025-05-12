@@ -1,13 +1,4 @@
 services: 
-  mongo:
-    image: mongo:latest
-    container_name: mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    restart: unless-stopped
-
   sonic:
     image: valeriansaliou/sonic:v1.4.9 # Using a specific version
     container_name: sonic_search_engine
@@ -19,22 +10,20 @@ services:
       - ./sonic.cfg:/etc/sonic.cfg # Corrected path to /etc/sonic.cfg
       - sonic_data_volume:/var/lib/sonic/store/ # Use a named volume for Sonic data
     restart: unless-stopped
-
   app:
     build: .
     container_name: let_shopping_app
     ports:
-      - "3030:3000"
+      - "3030:3000"    
     depends_on:
-      - mongo
-      - sonic # Ensure the app starts after MongoDB and Sonic
+      - sonic # Chỉ phụ thuộc vào sonic, MongoDB chạy riêng
     environment:
-      - MONGO_URI=mongodb://mongo:27017/let_shopping
+      - MONGO_URI=mongodb://host.docker.internal:27017/let_shopping
       - SONIC_HOST=sonic
       - SONIC_PORT=1491
       - SONIC_AUTH=SecretPassword
     restart: unless-stopped
 
 volumes:
-  mongodb_data:
-  sonic_data_volume: {}
+  # mongodb_data:
+  # sonic_data_volume: {}
