@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Let's Shop</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+    }
+
+    #search-container {
+      margin-bottom: 20px;
+      position: relative;
+      width: 302px;
+    }
+
+    #search-input {
+      width: 100%;
+      padding: 8px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    #product-list {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-top: none;
+      background-color: white;
+      z-index: 1000;
+      max-height: 145px;
+      overflow-y: auto;
+      display: none;
+      box-sizing: border-box;
+    }
+
+    li {
+      padding: 5px 0;
+      border-bottom: 1px dotted #eee;
+    }
+
+    li:last-child {
+      border-bottom: none;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Search Products</h1>
+  <div id="search-container">
+    <input type="text" id="search-input" placeholder="Type to search...">
+    <ul id="product-list">
+    </ul>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('search-input');
+    const productList = document.getElementById('product-list');
+    const searchContainer = document.getElementById('search-container');
+    let debounceTimeout;
+
+    searchInput.addEventListener('input', () => {
+      clearTimeout(debounceTimeout);
+      debounceTimeout = setTimeout(() => {
+        performSearch(searchInput.value);
+      }, 300); // Debounce
+    });
+
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', (event) => {
+      if (!searchContainer.contains(event.target)) {
+        productList.style.display = 'none';
+      }
+    });
+
+    // Prevent hiding dropdown when clicking on the input itself after it's already focused
+    searchInput.addEventListener('focus', () => {
+      if (searchInput.value.trim() !== '' && productList.children.length > 0 && productList.children[0].textContent !== 'No results found.' && productList.children[0].textContent !== 'Error fetching results.') {
+        productList.style.display = 'block';
+      }
+    });
+
+
+    async function performSearch(query) {
+      const trimmedQuery = query.trim();
+      if (trimmedQuery === '') {
+        productList.innerHTML = '';
+        productList.style.display = 'none';
+        return;
+      }
+
+      try {
+        const response = await fetch(`/search?q=${encodeURIComponent(trimmedQuery)}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const products = await response.json();
+        renderResults(products);
+      } catch (error) {
+        console.error('Error fetching search results:', error);
+        productList.innerHTML = '<li>Error fetching results.</li>';
+        productList.style.display = 'block'; // Show error in dropdown
+      }
+    }
+
+    function renderResults(products) {
+      productList.innerHTML = '';
+      if (products.length === 0) {
+        productList.innerHTML = '<li>No results found.</li>';
+        productList.style.display = 'block'; // Show "No results" in dropdown
+        return;
+      }
+
+      products.forEach(product => { 
+        const li = document.createElement('li');
+        li.textContent = product.name;
+        // TODO: make items clickable, e.g: to fill search or go to product page
+        li.addEventListener('click', () => {
+          searchInput.value = product.name;
+          productList.style.display = 'none';
+          // performSearch(product.name); // Optionally navigate
+        });
+        productList.appendChild(li);
+      });
+      productList.style.display = 'block'; // Show dropdown
+    }
+  </script>
+</body>
+
+</html>

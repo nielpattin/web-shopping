@@ -1,29 +1,121 @@
-services: 
-  sonic:
-    image: valeriansaliou/sonic:v1.4.9 # Using a specific version
-    container_name: sonic_search_engine
+services:
+  # mongodb:
+  #   image: mongo:latest
+  #   container_name: mongodb
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - mongodb_data:/data/db
+  #   restart: unless-stopped
+
+  sonic-server-1:
+    build: ./sonic-server
+    image: sonic-server:latest
+    container_name: sonic-server-1
     ports:
-      - "1491:1491" # Host:Container
+      - "50051:50051" # gRPC port (internal for Nginx)
     environment:
-      - SONIC_PASSWORD=SecretPassword
+      - NODE_ID=${SONIC_NODE_1_ID}
+      - SONIC_HOST=${SONIC_NODE_1_HOST}
+      - SONIC_PORT=${SONIC_PORT}
+      - SONIC_AUTH=${SONIC_AUTH}
+      - MONGO_URI=${MONGO_URI}
+      - GRPC_PORT=${SONIC_NODE_1_GRPC_PORT}
     volumes:
-      - ./sonic.cfg:/etc/sonic.cfg # Corrected path to /etc/sonic.cfg
-      - sonic_data_volume:/var/lib/sonic/store/ # Use a named volume for Sonic data
+      - ./sonic-config/sonic_1.cfg:/etc/sonic.cfg
+      - sonic_data_volume_1:/var/lib/sonic/store/
     restart: unless-stopped
-  app:
-    build: .
-    container_name: let_shopping_app
+    # depends_on:
+    # - mongodb
+
+  sonic-server-2:
+    build: ./sonic-server
+    image: sonic-server:latest
+    container_name: sonic-server-2
     ports:
-      - "3030:3000"    
-    depends_on:
-      - sonic # Chỉ phụ thuộc vào sonic, MongoDB chạy riêng
+      - "50052:50051"
+      - "3002:3001"
     environment:
-      - MONGO_URI=mongodb://host.docker.internal:27017/let_shopping
-      - SONIC_HOST=sonic
-      - SONIC_PORT=1491
-      - SONIC_AUTH=SecretPassword
+      - NODE_ID=${SONIC_NODE_2_ID}
+      - SONIC_HOST=${SONIC_NODE_2_HOST}
+      - SONIC_PORT=${SONIC_PORT}
+      - SONIC_AUTH=${SONIC_AUTH}
+      - MONGO_URI=${MONGO_URI}
+      - GRPC_PORT=${SONIC_NODE_2_GRPC_PORT}
+    volumes:
+      - ./sonic-config/sonic_2.cfg:/etc/sonic.cfg
+      - sonic_data_volume_2:/var/lib/sonic/store/
     restart: unless-stopped
+    # depends_on:
+    # - mongodb
+
+  sonic-server-3:
+    build: ./sonic-server
+    image: sonic-server:latest
+    container_name: sonic-server-3
+    ports:
+      - "50053:50051"
+      - "3003:3001"
+    environment:
+      - NODE_ID=${SONIC_NODE_3_ID}
+      - SONIC_HOST=${SONIC_NODE_3_HOST}
+      - SONIC_PORT=${SONIC_PORT}
+      - SONIC_AUTH=${SONIC_AUTH}
+      - MONGO_URI=${MONGO_URI}
+      - GRPC_PORT=${SONIC_NODE_3_GRPC_PORT}
+    volumes:
+      - ./sonic-config/sonic_3.cfg:/etc/sonic.cfg
+      - sonic_data_volume_3:/var/lib/sonic/store/
+    restart: unless-stopped
+    # depends_on:
+    # - mongodb
+
+  main-app-1:
+    build: ./main-server
+    image: main-app:latest
+    container_name: main-app-1
+    environment:
+      - SONIC_GRPC_LB_ENDPOINT=${SONIC_GRPC_LB_ENDPOINT}
+      - NODE_ENV=${NODE_ENV}
+    restart: unless-stopped
+    depends_on:
+      - sonic-server-1
+      - sonic-server-2
+      - sonic-server-3
+      # - mongodb
+
+  main-app-2:
+    build: ./main-server
+    image: main-app:latest
+    container_name: main-app-2
+    environment:
+      - SONIC_GRPC_LB_ENDPOINT=${SONIC_GRPC_LB_ENDPOINT}
+      - NODE_ENV=${NODE_ENV}
+    restart: unless-stopped
+    depends_on:
+      - sonic-server-1
+      - sonic-server-2
+      - sonic-server-3
+      # - mongodb
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80" # Public HTTP traffic
+      - "50000:50000" # Internal gRPC traffic to Sonic (via Nginx)
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+    depends_on:
+      - main-app-1
+      - main-app-2
+      - sonic-server-1
+      - sonic-server-2
+      - sonic-server-3
 
 volumes:
   # mongodb_data:
-  # sonic_data_volume: {}
+  sonic_data_volume_1:
+  sonic_data_volume_2:
+  sonic_data_volume_3:
