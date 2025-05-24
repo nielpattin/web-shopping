@@ -23,7 +23,7 @@ services:
       - GRPC_PORT=${SONIC_NODE_1_GRPC_PORT}
     volumes:
       - ./sonic-config/sonic_1.cfg:/etc/sonic.cfg
-      - sonic_data_volume_1:/var/lib/sonic/store/
+      - sonic-data-volume-1:/var/lib/sonic/store/
     restart: unless-stopped
     # depends_on:
     # - mongodb
@@ -44,7 +44,7 @@ services:
       - GRPC_PORT=${SONIC_NODE_2_GRPC_PORT}
     volumes:
       - ./sonic-config/sonic_2.cfg:/etc/sonic.cfg
-      - sonic_data_volume_2:/var/lib/sonic/store/
+      - sonic-data-volume-2:/var/lib/sonic/store/
     restart: unless-stopped
     # depends_on:
     # - mongodb
@@ -65,7 +65,7 @@ services:
       - GRPC_PORT=${SONIC_NODE_3_GRPC_PORT}
     volumes:
       - ./sonic-config/sonic_3.cfg:/etc/sonic.cfg
-      - sonic_data_volume_3:/var/lib/sonic/store/
+      - sonic-data-volume-3:/var/lib/sonic/store/
     restart: unless-stopped
     # depends_on:
     # - mongodb
@@ -116,6 +116,6 @@ services:
 
 volumes:
   # mongodb_data:
-  sonic_data_volume_1:
-  sonic_data_volume_2:
-  sonic_data_volume_3:
+  sonic-data-volume-1:
+  sonic-data-volume-2:
+  sonic-data-volume-3:
