@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: main-app
+  name: main-app-service
+spec:
+  type: LoadBalancer
+  ports:
+    - name: http
+      port: 80 # Service port, can be different from targetPort
+      targetPort: 3030
+  selector:
+    app: main-app

@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: sonic-server
+  name: sonic-server-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: sonic-server
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sonic-server
+    spec:
+      containers:
+        - env:
+            - name: GRPC_PORT
+              value: "50051"
+            - name: MONGO_URI
+              value: mongodb://mongouser:mongopassword@172.22.96.1:27017/web-shopping?authSource=admin
+            - name: NODE_ID
+              value: sonic_node_1 # This might also need to be generic if you scale, but keeping for now
+            - name: SONIC_AUTH
+              value: SecretPassword
+            - name: SONIC_HOST
+              value: localhost # Because the sonic-engine is running in the same pod
+            - name: SONIC_PORT
+              value: "1491"
+          image: sonic-server:latest
+          imagePullPolicy: IfNotPresent
+          name: sonic-server
+          ports:
+            - containerPort: 50051
+          volumeMounts:
+            - mountPath: /etc/sonic.cfg
+              name: sonic-server-config # Updated ConfigMap volume name
+              subPath: sonic.cfg # Match the key in the ConfigMap
+      volumes:
+        - configMap:
+            items:
+              - key: sonic.cfg # Updated key
+                path: sonic.cfg
+            name: sonic-server-config # Updated ConfigMap name
+          name: sonic-server-config # Updated ConfigMap volume name

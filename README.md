@@ -18,8 +18,3 @@
 ```bash
 docker run -d --name mongodb -p 27017:27017 -v mongodb_data:/data/db --restart unless-stopped mongo:latest
 ```
-#### Run the Web App
-
-```bash
-docker compose up -d
-```

@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: main-app
+  name: main-app-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: main-app
+  template:
+    metadata:
+      labels:
+        app: main-app
+    spec:
+      containers:
+        - env:
+            - name: NODE_ENV
+              value: development
+            - name: SONIC_GRPC_LB_ENDPOINT
+              value: sonic-server:50051
+          image: main-app:latest
+          imagePullPolicy: IfNotPresent
+          name: main-app
+          ports:
+            - containerPort: 3030
