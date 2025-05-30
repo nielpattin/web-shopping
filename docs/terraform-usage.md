@@ -35,3 +35,4 @@ terraform output --json public_ips
 ["35.215.121.124","35.215.124.212","35.215.176.251"]
 # SSH into the instance
 ssh <your_username>@<public_ip>
+```
