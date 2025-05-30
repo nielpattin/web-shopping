@@ -3,7 +3,7 @@ kind: Service
 metadata:
   labels:
     app: sonic-server
-  name: sonic-server-service
+  name: sonic-server
 spec:
   type: LoadBalancer
   ports:

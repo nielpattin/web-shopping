@@ -9,6 +9,12 @@ yarn.lock
 # Environment variables
 .env
 
+# Kubernetes secrets with sensitive data
+kubernetes/*-secret.yaml
+!kubernetes/*-secret.template.yaml
+kubernetes/create-secrets.sh
+!kubernetes/create-secrets.template.sh
+
 # OS generated files
 .DS_Store
 Thumbs.db

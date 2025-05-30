@@ -6,15 +6,13 @@
 
 
 ### A Distributed Web App Shopping (Like Amazon, Shopee, Lazada, etc.)
-- This project is a distributed web application that allows users to browse products, add them to their cart, and place orders. It uses MongoDB for data storage and Docker for containerization.
+- This project is a distributed web application that allows users to browse products, add them to their cart, and place orders. It uses MongoDB for data storage and Docker for containerization. Kubernetes is used for orchestration, and Nginx serves as a reverse proxy to route requests to the appropriate services.
 
-### Setup Instructions
+## Setup Guides
+*   [Production Setup Guide](docs/production-setup.md)
+*   [Development Setup Guide](docs/development-setup.md)
+*   [Terraform Usage Guide](docs/terraform-usage.md)
+*   [Kubernetes Cluster Setup Guide](docs/kubernetes-cluster-setup.md)
+*   [Kubernetes Cluster Installation Guide](docs/kubernetes-cluster-installation-guide.md)
+*   [Kubernetes Self-Review & Concepts](docs/kubernetes-self-review.md)
 
-#### Prerequisites
-- Docker installed on your machine.
-
-#### Run MongoDB Separately
-
-```bash
-docker run -d --name mongodb -p 27017:27017 -v mongodb_data:/data/db --restart unless-stopped mongo:latest
-```

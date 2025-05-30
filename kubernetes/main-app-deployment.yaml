@@ -20,8 +20,8 @@ spec:
               value: development
             - name: SONIC_GRPC_LB_ENDPOINT
               value: sonic-server:50051
-          image: main-app:latest
-          imagePullPolicy: IfNotPresent
+          image: nieltran/main-app:v1.0
+          imagePullPolicy: Always
           name: main-app
           ports:
             - containerPort: 3030
