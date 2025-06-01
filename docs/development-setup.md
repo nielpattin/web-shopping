@@ -7,10 +7,6 @@ This guide provides concise instructions for setting up a local Kubernetes devel
 Before installing Minikube, ensure you have:
 *   A container or virtual machine manager, such as:
     *   Docker
-    *   HyperKit (macOS)
-    *   Hyper-V (Windows)
-    *   KVM (Linux)
-    *   VirtualBox
 *   `kubectl` (Kubernetes command-line tool). Install if not present: [Install kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
 
 ## 2. Install Minikube
@@ -23,15 +19,6 @@ curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-
 sudo install minikube-linux-amd64 /usr/local/bin/minikube
 ```
 
-**macOS (x86-64/arm64 using Homebrew):**
-```bash
-brew install minikube
-```
-
-**Windows (using Chocolatey):**
-```powershell
-choco install minikube
-```
 For other installation methods, see the [official Minikube documentation](https://minikube.sigs.k8s.io/docs/start/).
 
 ## 3. Start Minikube Cluster
@@ -46,24 +33,19 @@ You can specify a driver if needed (e.g., `minikube start --driver=docker`).
 
 *   **Configure `kubectl`:** Minikube usually configures `kubectl` automatically. If not, run `minikube kubectl -- config view`.
 *   **Get Cluster IP:**
-    ```bash
-    minikube ip
-    ```
+```bash
+minikube ip
+```
 *   **Access Minikube Dashboard:**
-    ```bash
-    minikube dashboard
-    ```
+```bash
+minikube dashboard
+```
 
 ## 5. Deploy Your Application
 
 Once Minikube is running, deploy your application's Kubernetes manifests:
 ```bash
-# Example:
-# kubectl apply -f ./kubernetes/main-app-deployment.yaml
-# kubectl apply -f ./kubernetes/main-app-service.yaml
-# kubectl apply -f ./kubernetes/nginx-deployment.yaml
-# kubectl apply -f ./kubernetes/nginx-service.yaml
-# ... and other necessary manifests
+kubectl apply -f kubernetes/
 ```
 (Adapt the paths above to your project's manifest locations.)
 
@@ -93,10 +75,10 @@ To revert, use `eval $(minikube -p minikube docker-env -u)`.
 ## 8. Manage Minikube Cluster
 
 *   **Stop the cluster:**
-    ```bash
-    minikube stop
-    ```
+```bash
+minikube stop
+```
 *   **Delete the cluster:**
-    ```bash
-    minikube delete
-    ```
+```bash
+minikube delete
+```

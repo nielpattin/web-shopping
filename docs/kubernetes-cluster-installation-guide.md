@@ -3,22 +3,15 @@
 This guide provides scripts to set up a Kubernetes cluster on multiple VMs.
 
 ### Prerequisites
-- 3 VMs running Debian 12 bookworm
+- 4 VMs running Debian 12 bookworm
+- 1 is Load Balancer other 3 are in the cluster (1 master, 2 workers)
 - Root or sudo access on all VMs
-- Network connectivity between VMs
+- Network connectivity between VMs (same VPC)
 
 ### Installation Steps
 
 #### Step 1: Run Worker Setup on Worker Nodes
-SSH into each worker node (machine-1, machine-2, etc) and copy the entire content of `kubernetes-worker-setup.sh`, then paste it directly into the terminal and press Enter to execute.
-
-Alternatively, you can copy the file to each worker node and run it:
-
-```bash
-scp kubernetes-worker-setup.sh <user>@<worker-ip>:/home/<user>/
-chmod +x kubernetes-worker-setup.sh
-bash kubernetes-worker-setup.sh
-```
+SSH into each worker node (machine-1, machine-2, etc) and copy the entire content of [kubernetes-worker-setup.sh](../pre-setup/kubernetes-worker-setup.sh), then paste it directly into the terminal and press Enter to execute.
 
 This script will:
 - Disable swap
@@ -27,13 +20,13 @@ This script will:
 - Install kubeadm, kubelet, and kubectl
 
 #### Step 2: Initialize Master Node
-SSH into the master node and copy the entire content of `kubernetes-master-setup.sh`, then paste it directly into the terminal and press Enter to execute.
+SSH into the master node and copy the entire content of [kubernetes-master-setup.sh](../pre-setup/kubernetes-master-setup.sh), then paste it directly into the terminal and press Enter to execute.
 
 This script will:
 - Run all common setup steps(same as worker setup)
-- Initialize the Kubernetes cluster with `kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-advertise-address=<master-ip>`
+- Initialize the Kubernetes cluster with `kubeadm init`
 - Configure kubectl for the regular user (otherwise you will get `"The connection to the server localhost:8080 was refused"` error)
-- Install Calico CNI networking (v3.30.0) for pod networking to make cluster communication
+- Install Cilium for pod networking to make cluster communication
 - Display the join command for worker nodes
 
 #### Step 3: Run the join command provided by the master initialization on the worker nodes:
@@ -57,25 +50,8 @@ machine-1   Ready    <none>          5m    v1.33.1
 machine-2   Ready    <none>          5m    v1.33.1
 ```
 
-#### Step 5: Optional - Verify Calico Installation
-Verify Calico installation and check pod status:
-
-```bash
-kubectl get pods -n calico-system
-```
-
-(Optional) Monitor Calico system status:
-```bash
-watch kubectl get pods -n calico-system
-```
-
 ### Common Issues
-
-1. **Nodes show "NotReady" status**
-   - Wait for Calico to be fully deployed
-   - Check with: `kubectl get pods -n calico-system`
-
-2. **kubeadm join fails**
+#### 1. **kubeadm join fails**
    - Verify network connectivity between nodes
    - Check if the token has expired (tokens expire after 24 hours)
    - Generate new token: `kubeadm token create --print-join-command`
@@ -84,46 +60,81 @@ watch kubectl get pods -n calico-system
 
 To access the cluster from your local machine:
 
-1. Copy kubeconfig from master node:
+##### 1. Change server address in kubeconfig file to the master node's external IP.
 ```bash
-scp -i <ssh-key> <user>@<master-external-ip>:/home/<user>/.kube/config ~/.kube/admin.conf
+EXTERNAL_IP=$(curl -s -H "Metadata-Flavor: Google" http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip)
+KUBECONFIG_PATH="/home/niel/.kube/config"
+CURRENT_IP=$(grep -oP 'server: https://\K[^:]+' "$KUBECONFIG_PATH")
+echo "🔄 Replacing $CURRENT_IP with $EXTERNAL_IP in kubeconfig..."
+sed -i "s|server: https://$CURRENT_IP:6443|server: https://$EXTERNAL_IP:6443|g" "$KUBECONFIG_PATH"
+NEW_SERVER=$(grep "server:" "$KUBECONFIG_PATH")
+echo "✅ Updated server: $NEW_SERVER"
 ```
 
-2. Open the kubeconfig file:
-This file is typically located at `~/.kube/admin.conf`. You can edit it using:
-vi, nano, nvim, code,...
+##### 2. Copy kubeconfig from master node:
 ```bash
-vi ~/.kube/admin.conf
+scp <user>@<master-external-ip>:/home/<user>/.kube/config ~/.kube/admin.conf
 ```
-3. Update the server address to the master node's IP:
-```yaml
-clusters:
-- cluster:
-    server: https://<master-external-ip>:6443
-```
-4. Save and exit the file.
 
-5. Set environment variable:
+##### 3. Set environment variable:
 ```bash
 export KUBECONFIG=~/.kube/admin.conf
 ```
 
-6. Verify connection:
+##### 4. Verify connection:
 This command should return the list of nodes in the cluster on the master node:
 ```bash
 kubectl get nodes
 ```
 
-### Next Steps
+### Accessing the Kubernetes Dashboard
 
-After cluster setup, you can:
-- Deploy applications using kubectl
-- Install additional add-ons (metrics-server, dashboard, etc.)
-- Configure ingress controllers for external access
-- Set up persistent storage solutions
+1. **Install the Kubernetes Dashboard**
+```bash
+# Add kubernetes-dashboard repository
+helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+# Deploy a Helm Release named "kubernetes-dashboard" using the kubernetes-dashboard chart
+helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
+```
+
+2.  **Access the Dashboard:**
+Port-forward the Kubernetes Dashboard service to your local machine:
+```bash
+kubectl port-forward -n kubernetes-dashboard svc/kubernetes-dashboard-kong-proxy 8443:443
+```
+Then, open your web browser and navigate to:
+```
+http://localhost:8443/
+```
+
+3.  **Apply the Service Account Configuration:**
+```bash
+kubectl apply -f kubernetes/service-account.yml
+```
+
+4.  **Create the Token:**
+Once the service account is correctly configured and applied in the `kube-system` namespace, create the token:
+```bash
+kubectl -n kube-system create token admin-user
+```
+This command will output the token string.
+
+### Setup Ingress Controller
+
+#### 1. Install Nginx Ingress Controller
+```bash
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.2/deploy/static/provider/cloud/deploy.yaml
+```
+#### 2. Verify Ingress Controller
+
+```bash
+kubectl get pods --namespace=ingress-nginx
+# Make sure controller pods are running
+```
 
 ### Resources
 - [Official Kubernetes Documentation](https://kubernetes.io/docs/)
-- [Calico Documentation](https://docs.tigera.io/calico/latest/)
+- [Cilium Documentation](https://docs.cilium.io/en/stable/gettingstarted/k8s-install-default/#install-the-cilium-cli)
 - [kubeadm Documentation](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/)
 - [Containerd Documentation](https://containerd.io/docs/)
+- [Ingress Nginx Documentation](https://kubernetes.github.io/ingress-nginx/)

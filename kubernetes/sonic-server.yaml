@@ -25,6 +25,8 @@ spec:
                 secretKeyRef:
                   name: sonic-server-secret
                   key: mongo-uri
+            - name: DB_NAME
+              value: "web-shopping"
             - name: NODE_ID
               value: sonic_node_1
             - name: SONIC_AUTH
@@ -52,3 +54,19 @@ spec:
                 path: sonic.cfg
             name: sonic-server-config # Updated ConfigMap name
           name: sonic-server-config # Updated ConfigMap volume name
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: sonic-server
+  name: sonic-server
+spec:
+  type: ClusterIP
+  ports:
+    - name: "sonic-grpc"
+      port: 50051 # Service port, can be different from targetPort
+      targetPort: 50051 # Port to sonic-server container
+      protocol: TCP
+  selector:
+    app: sonic-server

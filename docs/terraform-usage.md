@@ -28,11 +28,10 @@ terraform validate
 ### SSH Access
 
 ```bash
-# Get the public IPs of the instances
-terraform output --json public_ips
+# Get the internal IP, external IP, nginx external IP
+terraform output
 
-# Example output:
-["35.215.121.124","35.215.124.212","35.215.176.251"]
 # SSH into the instance
+# (that you already setup the ssh config to use your private key)
 ssh <your_username>@<public_ip>
 ```

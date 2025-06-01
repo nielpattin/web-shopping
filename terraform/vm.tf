@@ -53,21 +53,8 @@ resource "google_compute_instance" "machine" {
     enable_secure_boot          = false
     enable_vtpm                 = false
   }
-  tags = ["ssh", "http", "https", "kubernetes"]
+  tags = ["http-server", "https-server", "kubernetes"]
   zone = "asia-east2-a"
-}
-
-resource "google_compute_firewall" "ssh" {
-  name    = "ssh-access"
-  network = "default"
-
-  allow {
-    protocol = "tcp"
-    ports    = ["22"]
-  }
-
-  target_tags = ["ssh"]
-  source_ranges = ["0.0.0.0/0"]
 }
 
 # Kubernetes API Server port

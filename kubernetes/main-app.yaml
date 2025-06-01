@@ -25,3 +25,20 @@ spec:
           name: main-app
           ports:
             - containerPort: 3030
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: main-app
+  annotations:
+    nginx-lb.kubernetes.io/external-lb: "ingress-only"
+    nginx-lb.kubernetes.io/backend-protocol: "HTTP"
+spec:
+  type: ClusterIP
+  selector:
+    app: main-app
+  ports:
+  - protocol: TCP
+    port: 80 # The port to expose internally
+    targetPort: 3030 # The port main-app is listening on inside the container
+    name: http

@@ -110,7 +110,7 @@ echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.
 
 # 4.4 Install kubeadm, kubelet, and kubectl
 sudo apt-get update
-sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-get install -y kubelet kubeadm kubectl --allow-change-held-packages
 sudo apt-mark hold kubelet kubeadm kubectl
 
 # 4.5 Enable and start kubelet
@@ -128,7 +128,6 @@ EXTERNAL_IP=$(curl -H "Metadata-Flavor: Google" http://metadata/computeMetadata/
 # 6. Initialize the Kubernetes cluster
 echo "📋 Step 6: Initializing Kubernetes cluster with Calico pod network CIDR..."
 sudo kubeadm init \
-  --pod-network-cidr=192.168.0.0/16 \
   --apiserver-advertise-address=$INTERNAL_IP \
   --apiserver-cert-extra-sans=$EXTERNAL_IP \
 
@@ -141,22 +140,35 @@ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 echo "✅ kubectl configured for regular user"
 
-# 9. Install Calico CNI
-echo "📋 Step 9: Installing Calico operator CRDs and Tigera operator..."
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.30.0/manifests/operator-crds.yaml
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.30.0/manifests/tigera-operator.yaml
-echo "✅ Tigera operator and CRDs installed"
+# 9. Install Cilium
+echo "📋 Step 9: Installing Cilium..."
+CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+CLI_ARCH=amd64
+if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
+curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
+sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
+rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+cilium install --version 1.17.4
+echo "✅ Cilium installed"
 
-# 10. Install Calico custom resources
-echo "📋 Step 10: Downloading and installing Calico custom resources..."
-if [ ! -f "custom-resources.yaml" ]; then
-  echo "Downloading Calico custom resources..."
-  curl https://raw.githubusercontent.com/projectcalico/calico/v3.30.0/manifests/custom-resources.yaml -O
-else
-  echo "custom-resources.yaml already exists, skipping download..."
-fi
-kubectl create -f custom-resources.yaml
-echo "✅ Calico custom resources installed"
+echo "🔧 Updating kubeconfig to use external IP..."
+
+# 10. Update kubeconfig to use external IP
+# Get the external IP from Google Cloud metadata
+EXTERNAL_IP=$(curl -s -H "Metadata-Flavor: Google" http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip)
+
+KUBECONFIG_PATH="/home/niel/.kube/config"
+
+# Find the current internal IP in the config file
+CURRENT_IP=$(grep -oP 'server: https://\K[^:]+' "$KUBECONFIG_PATH")
+
+# Replace the internal IP with external IP
+sed -i "s|server: https://$CURRENT_IP:6443|server: https://$EXTERNAL_IP:6443|g" "$KUBECONFIG_PATH"
+
+# Verify the change
+NEW_SERVER=$(grep "server:" "$KUBECONFIG_PATH")
+echo "✅ Updated server line: $NEW_SERVER"
 
 # Keep downloaded files for potential re-use
 echo "📋 Downloaded files preserved for future re-runs"

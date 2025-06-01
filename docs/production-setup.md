@@ -1,13 +1,39 @@
 # Production Setup Guide
 
-
-## Project Overview
-
-### From start to finish, the project includes:
+### Project Overview
+#### From start to finish, the project includes:
 1. **Sonic Server**: A gRPC server that handles product search and order processing.
 2. **Main Application**: A web application that provides the user interface for browsing products and placing orders.
 3. **Nginx**: A reverse proxy server that routes requests to the main application and Sonic server.
 4. **MongoDB**: A NoSQL database for storing product and order data.
+
+
+### 1. Kubernetes Deployment Guide
+
+#### Build and Distribute Docker Images
+
+```bash
+# Build images replace `nieltran` with your Docker Hub org or username 
+docker build -t nieltran/main-app:v1.0 main-app
+docker build -t nieltran/sonic-server:v1.0 sonic-server
+
+# Build and push to registry
+docker push nieltran/main-app:v1.0
+docker push nieltran/sonic-server:v1.0
+```
+### 2. Create Secrets
+
+#### Create Secrets (Important: Contains Sensitive Data)
+```bash
+# First, copy and customize the template with your actual credentials
+cp kubernetes/create-secrets.template.sh kubernetes/create-secrets.sh
+```
+- Then edit `kubernetes/create-secrets.sh` to include your actual MongoDB URL credentials and any other sensitive data.
+
+```bash
+# Then, run the script to create the secrets file
+bash kubernetes/create-secrets.sh
+```
 
 ## Deployment Guide for Distributed Web App Shopping
 
@@ -33,56 +59,26 @@ terraform apply # Apply the configuration to create the resources
 ```
 
 ### Step 4: Setup Kubernetes on VM instances
-For detailed instructions on setting up Kubernetes on VM instances, please refer to the [Kubernetes Cluster Installation Guide](docs/kubernetes-cluster-installation-guide.md).
+For detailed instructions on setting up Kubernetes on VM instances, please refer to the [Kubernetes Cluster Installation Guide](kubernetes-cluster-installation-guide.md).
 
-### Step 5: Deploy the application
-- cd to the kubernetes directory
-```bash
-cd kubernetes
-```
+### Step 5: Deploy the application (Make sure steps 1-4 are completed)
 - Run the following command to deploy the application:
-```bash
-kubectl apply -f .
-```
-- This command will create all the necessary resources in your Kubernetes cluster, including deployments, services, and ingress rules.
-
-## Kubernetes Deployment Guide
-
-### Build and Distribute Docker Images
-
-```bash
-# Build images replace `nieltran` with your Docker Hub org or username 
-docker build -t nieltran/main-app:v1.0 main-app
-docker build -t nieltran/sonic-server:v1.0 sonic-server
-
-# Build and push to registry
-docker push nieltran/main-app:v1.0
-docker push nieltran/sonic-server:v1.0
-
-```
-### Create Secrets
-
-#### Create Secrets (Important: Contains Sensitive Data)
-```bash
-# First, copy and customize the template with your actual credentials
-cp kubernetes/create-secrets.template.sh kubernetes/create-secrets.sh
-```
-
-### Deploy to Kubernetes
-
-#### Deploy All at Once
 ```bash
 kubectl apply -f kubernetes/
 ```
+- This command will create all the necessary resources in your Kubernetes cluster, including deployments, services, and ingress rules.
+
+
 
 #### Check Services
 ```bash
-kubectl get services
+➜ kubectl get svc
 # Expected output:
-# NAME           TYPE           CLUSTER-IP     EXTERNAL-IP   PORT(S)
-# sonic-server   LoadBalancer   10.96.x.x      <pending>     50051:30xxx/TCP
-# main-app       LoadBalancer   10.96.x.x      <pending>     80:30xxx/TCP
-# nginx          Service        10.96.x.x      <pending>     80:30xxx/TCP
+# NAME           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)     AGE
+# kubernetes     ClusterIP   10.96.0.1        <none>        443/TCP     5h8m
+# main-app       ClusterIP   10.105.112.109   <none>        80/TCP      116m
+# nginx          ClusterIP   10.99.130.150    <none>        80/TCP      116m
+# sonic-server   ClusterIP   10.110.221.120   <none>        50051/TCP   116m
 ```
 
 #### Check Pods
@@ -96,28 +92,9 @@ kubectl rollout status deployment/main-app-deployment
 kubectl rollout status deployment/nginx-deployment
 ```
 
-
 #### Useful Commands
 ```bash
 
 # Execute into a pod for debugging
 kubectl exec -it <pod-name> -- /bin/sh
-
-# Port forward for local testing
-kubectl port-forward service/main-app 8080:80
 ```
-
-### Expected Service Connectivity
-
-After deployment, the connectivity flow will be:
-
-```
-User Browser → main-app Service (port 80) → main-app Pods (port 3030)
-                    ↓
-main-app Pods → sonic-server Service (port 50051) → sonic-server Pods (port 50051)
-                    ↓  
-sonic-server Pods → MongoDB (external, port 27017)
-```
-
-
-

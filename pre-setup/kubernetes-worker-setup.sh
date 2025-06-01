@@ -112,7 +112,7 @@ echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.
 
 # 4.4 Install kubeadm, kubelet, and kubectl
 sudo apt-get update
-sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-get install -y kubelet kubeadm kubectl --allow-change-held-packages
 sudo apt-mark hold kubelet kubeadm kubectl
 
 # 4.5 Enable and start kubelet

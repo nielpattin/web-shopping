@@ -31,9 +31,3 @@
   - So, each service will have its own load balancer.
   - This will increase costs!
 - **Ingress**: Provides HTTP routing and filtering, allowing multiple services to share a single load balancer.
-
-### Ingress-Nginx-Controller
-
-#### Installation
-```bash
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
