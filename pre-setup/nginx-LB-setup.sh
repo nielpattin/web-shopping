@@ -41,15 +41,21 @@ server {
         add_header Content-Type text/plain;
     }
 
+    location /debug {
+        access_log off;
+        return 200 "Host: $host\\nRemote: $remote_addr\\nScheme: $scheme\\nPort: $server_port\\n";
+        add_header Content-Type text/plain;
+    }
+
     # Main proxy configuration - route to ingress-nginx controller
     location / {
         proxy_pass http://k8s_server;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_set_header X-Forwarded-Host \$host;
-        proxy_set_header X-Forwarded-Port \$server_port;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
         
         # Connection settings
         proxy_connect_timeout 30s;
@@ -68,14 +74,14 @@ server {
 EOF
 
 # Enable the new site
-sudo ln -sf /etc/nginx/sites-available/kubernetes-ingress-lb /etc/nginx/sites-enabled/kubernetes-ingress-lb
+sudo ln -sf /etc/nginx/sites-available/k8s-lb /etc/nginx/sites-enabled/k8s-lb
 
 # Remove old configuration and default site
 sudo rm -f /etc/nginx/sites-enabled/kubernetes-lb
 sudo rm -f /etc/nginx/sites-enabled/default
 
 # Test Nginx configuration
-sudo nginx -t
+sudo nginx -t && sudo systemctl reload nginx
 
 # Enable and start Nginx
 sudo systemctl enable nginx
