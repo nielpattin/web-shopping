@@ -69,6 +69,10 @@ kubectl apply -f kubernetes/
 - This command will create all the necessary resources in your Kubernetes cluster, including deployments, services, and ingress rules.
 
 
+### Step 6: Setup Load Balancer
+Run this code on the load balancer VM to set up a nginx load balancer that will forward traffic to the ingress controller
+[nginx-LB-setup](../pre-setup/nginx-LB-setup).
+
 
 #### Check Services
 ```bash

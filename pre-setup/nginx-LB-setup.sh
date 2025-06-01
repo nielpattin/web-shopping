@@ -19,9 +19,9 @@ K8S_NODE_2="10.170.0.22"  # machine-1 (worker)
 K8S_NODE_3="10.170.0.23"  # machine-2 (worker)
 
 # Create Nginx configuration for load balancing to ingress-nginx controller
-sudo tee /etc/nginx/sites-available/kubernetes-ingress-lb > /dev/null << EOF
+sudo tee /etc/nginx/sites-available/k8s-lb > /dev/null << EOF
 # Upstream configuration for Kubernetes ingress-nginx controller NodePort
-upstream kubernetes_ingress {
+upstream k8s_server {
     # Health checks and load balancing to ingress-nginx controller on all nodes
     # Port 30639 is the ingress-nginx-controller HTTP NodePort
     server ${K8S_NODE_1}:30639 max_fails=3 fail_timeout=30s;
@@ -43,7 +43,7 @@ server {
 
     # Main proxy configuration - route to ingress-nginx controller
     location / {
-        proxy_pass http://kubernetes_ingress;
+        proxy_pass http://k8s_server;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
