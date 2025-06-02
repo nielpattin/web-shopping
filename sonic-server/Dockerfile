@@ -14,8 +14,7 @@ COPY package*.json ./
 
 RUN npm install
 
-COPY index.js .
-COPY proto ./proto/
+COPY . .
 
 # Expose the gRPC port and the Express port
 EXPOSE 50051

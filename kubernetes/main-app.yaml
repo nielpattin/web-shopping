@@ -5,7 +5,7 @@ metadata:
     app: main-app
   name: main-app-deployment
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: main-app
@@ -17,8 +17,8 @@ spec:
       containers:
         - env:
             - name: NODE_ENV
-              value: development
-            - name: SONIC_GRPC_LB_ENDPOINT
+              value: production
+            - name: SONIC_GRPC_ENDPOINT
               value: sonic-server:50051
           image: nieltran/main-app:v1.0
           imagePullPolicy: Always

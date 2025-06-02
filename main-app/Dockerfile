@@ -6,9 +6,7 @@ COPY package*.json ./
 
 RUN npm install
 
-COPY index.js ./
-COPY public ./public/
-COPY proto ./proto/
+COPY . .
 
 EXPOSE 3030
 

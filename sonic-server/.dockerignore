@@ -1,3 +1,8 @@
 node_modules
 Dockerfile
 .dockerignore
+.env
+sonic.cfg
+sonic-server/sonic/*
+sonic-server/generated_data.json
+sonic-server/setup-sonic.sh

@@ -6,6 +6,12 @@ yarn-error.log*
 package-lock.json
 yarn.lock
 
+# sonic files
+sonic-server/sonic/*
+
+# data
+sonic-server/generated_data.json
+
 # Environment variables
 .env
 
