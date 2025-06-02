@@ -13,7 +13,7 @@ For local development, both `sonic-server` and `main-app` are configured using `
 
 Create a file named `.env` in the `sonic-server/` directory with the following content:
 
-```dotenv
+```bash
 MONGO_URI=mongodb://mongouser:mongopassword@127.0.0.1:27017/
 DB_NAME=web-shopping
 SONIC_HOST=localhost
@@ -31,7 +31,7 @@ NODE_ENV=development
 
 Create a file named `.env` in the `main-app/` directory with the following content:
 
-```dotenv
+```bash
 SONIC_GRPC_ENDPOINT=localhost:50051
 NODE_ENV=development
 ```
@@ -44,20 +44,26 @@ NODE_ENV=development
 After creating the `.env` files, follow these steps to start the development environment:
 
 1.  **Start the Sonic Server:**
-    Open a terminal, navigate to the `sonic-server/` directory, and run:
-    ```bash
-    npm install
-    npm start
-    ```
-    The `sonic-server` will connect to MongoDB and start its gRPC server on `localhost:50051`.
+Open a terminal, navigate to the `sonic-server/` directory, and run:
+```bash
+npm install
+npm start
+```
+The `sonic-server` will connect to MongoDB and start its gRPC server on `localhost:50051`.
 
-2.  **Start the Main Application:**
-    Open another terminal, navigate to the `main-app/` directory, and run:
-    ```bash
-    npm install
-    npm start
-    ```
-    The `main-app` will start its web server on `http://localhost:3030` and connect to the `sonic-server`'s gRPC service.
+2. **Create Mock Data for MongoDB:**
+- Navigate to the `sonic-server/` directory.
+```bash
+node generateMockData.js
+```
+
+3.  **Start the Main Application:**
+Open another terminal, navigate to the `main-app/` directory, and run:
+```bash
+npm install
+npm start
+```
+The `main-app` will start its web server on `http://localhost:3030` and connect to the `sonic-server`'s gRPC service.
 
 You should then be able to access the main application in your browser at `http://localhost:3030`.
 

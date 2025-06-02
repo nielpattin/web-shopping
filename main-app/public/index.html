@@ -70,6 +70,7 @@
     li:last-child {
       border-bottom: none;
     }
+
     /* Product Card Styles */
     #product-card {
       margin-top: 30px;
@@ -147,28 +148,28 @@
       body {
         padding: 10px;
       }
-      
+
       .main-content {
         max-width: 100%;
       }
-      
+
       #search-container {
         width: 100%;
         max-width: 302px;
       }
-      
+
       #product-card {
         border-radius: 8px;
       }
-      
+
       .product-card-header {
         padding: 15px;
       }
-      
+
       .product-card-header h2 {
         font-size: 20px;
       }
-      
+
       .product-card-body {
         padding: 20px;
       }
@@ -187,21 +188,26 @@
 
     <!-- Product Card Section -->
     <div id="product-card" style="display: none;">
-    <div class="product-card-header">
-      <h2 id="product-name">Product Name</h2>
-    </div>
-    <div class="product-card-body">
-      <div class="product-detail">
-        <span class="product-label">Description</span>
-        <div class="product-value" id="product-description">Product description will appear here</div>
+      <div class="product-card-header">
+        <h2 id="product-name">Product Name</h2>
       </div>
-      <div class="product-detail">
-        <span class="product-label">Category</span>
-        <div class="product-value">
-          <span class="product-category" id="product-category">Category</span>
+      <div class="product-card-body">
+        <div class="product-detail">
+          <span class="product-label">Description</span>
+          <div class="product-value" id="product-description">Product description will appear here</div>
+        </div>
+        <div class="product-detail">
+          <span class="product-label">Category</span>
+          <div class="product-value">
+            <span class="product-category" id="product-category">Category</span>
+          </div>
+        </div>
+        <div class="product-detail">
+          <span class="product-label">Price</span>
+          <div class="product-value" id="product-price">$0.00</div>
         </div>
       </div>
-    </div>
+
     </div>
   </div>
 
@@ -213,6 +219,7 @@
     const productNameEl = document.getElementById('product-name');
     const productDescriptionEl = document.getElementById('product-description');
     const productCategoryEl = document.getElementById('product-category');
+    const productPriceEl = document.getElementById('product-price');
     let debounceTimeout;
     let selectedProduct = null;
 
@@ -284,12 +291,13 @@
 
     function showProductCard(product) {
       selectedProduct = product;
-      
+
       // Populate product card with data
       productNameEl.textContent = product.name || 'Unknown Product';
       productDescriptionEl.textContent = product.description || 'No description available';
       productCategoryEl.textContent = product.category || 'Uncategorized';
-      
+      productPriceEl.textContent = product.price ? `$${Number(product.price).toFixed(2)}` : 'N/A';
+
       // Show product card with smooth animation
       productCard.style.display = 'block';
       setTimeout(() => {
