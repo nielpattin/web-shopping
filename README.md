@@ -14,10 +14,11 @@
 *   [Terraform Usage Guide](docs/terraform-usage.md)
 *   [Kubernetes Cluster Installation Guide](docs/kubernetes-cluster-installation-guide.md)
 *   [Kubernetes Self-Review & Concepts](docs/kubernetes-self-review.md)
+*   [Report](docs/report.md)
 
 #### Features:
   - [x] Search products by name
-  - [ ] View product details
+  - [x] View product details
   - [ ] Authentication User
   - [ ] Add products to cart
   - [ ] View cart
