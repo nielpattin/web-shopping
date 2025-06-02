@@ -1,84 +1,68 @@
-# Development Setup Guide (Minikube)
+# Development Environment Setup
 
-This guide provides concise instructions for setting up a local Kubernetes development environment using Minikube.
+## Prerequisites
 
-## 1. Prerequisites
+- Node.js installed (version 22 or higher)
+- MongoDB instance running (e.g., on `mongodb://localhost:27017`)
 
-Before installing Minikube, ensure you have:
-*   A container or virtual machine manager, such as:
-    *   Docker
-*   `kubectl` (Kubernetes command-line tool). Install if not present: [Install kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
+## Environment Configuration (.env files)
 
-## 2. Install Minikube
+For local development, both `sonic-server` and `main-app` are configured using `.env` files in their respective directories.
 
-Choose the method for your operating system:
+### Sonic Server (`sonic-server/.env`)
 
-**Linux (x86-64):**
-```bash
-curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-sudo install minikube-linux-amd64 /usr/local/bin/minikube
+Create a file named `.env` in the `sonic-server/` directory with the following content:
+
+```dotenv
+MONGO_URI=mongodb://mongouser:mongopassword@127.0.0.1:27017/
+DB_NAME=web-shopping
+SONIC_HOST=localhost
+SONIC_PORT=1491
+SONIC_AUTH=SecretPassword
+GRPC_PORT=50051
+NODE_ENV=development
 ```
 
-For other installation methods, see the [official Minikube documentation](https://minikube.sigs.k8s.io/docs/start/).
+- `MONGO_URI`: Points to your local MongoDB instance.
+- `DB_NAME`: The database name to use.
+- `GRPC_PORT`: The port on which this `sonic-server` instance will listen for gRPC connections from `main-app`.
 
-## 3. Start Minikube Cluster
+### Main Application (`main-app/.env`)
 
-Start your local Kubernetes cluster:
-```bash
-minikube start
-```
-You can specify a driver if needed (e.g., `minikube start --driver=docker`).
+Create a file named `.env` in the `main-app/` directory with the following content:
 
-## 4. Interact with Your Cluster
-
-*   **Configure `kubectl`:** Minikube usually configures `kubectl` automatically. If not, run `minikube kubectl -- config view`.
-*   **Get Cluster IP:**
-```bash
-minikube ip
-```
-*   **Access Minikube Dashboard:**
-```bash
-minikube dashboard
+```dotenv
+SONIC_GRPC_ENDPOINT=localhost:50051
+NODE_ENV=development
 ```
 
-## 5. Deploy Your Application
+**Key `main-app` variables:**
+- `SONIC_GRPC_ENDPOINT`: Tells `main-app` where to connect to the `sonic-server`'s gRPC service.
 
-Once Minikube is running, deploy your application's Kubernetes manifests:
-```bash
-kubectl apply -f kubernetes/
-```
-(Adapt the paths above to your project's manifest locations.)
+## Running the Services Locally
 
-## 6. Access Your Application
+After creating the `.env` files, follow these steps to start the development environment:
 
-To access the deployed application (e.g., via an Nginx service):
-```bash
-kubectl port-forward service/nginx 8080:80
-```
-Then, open your browser and navigate to `http://localhost:8080`.
+1.  **Start the Sonic Server:**
+    Open a terminal, navigate to the `sonic-server/` directory, and run:
+    ```bash
+    npm install
+    npm start
+    ```
+    The `sonic-server` will connect to MongoDB and start its gRPC server on `localhost:50051`.
 
-Alternatively, for services of type `LoadBalancer` or `NodePort`, you can use:
-```bash
-minikube service <your-service-name>
-```
-This will open the service URL in your browser.
+2.  **Start the Main Application:**
+    Open another terminal, navigate to the `main-app/` directory, and run:
+    ```bash
+    npm install
+    npm start
+    ```
+    The `main-app` will start its web server on `http://localhost:3030` and connect to the `sonic-server`'s gRPC service.
 
-## 7. (Optional) Using Minikube's Docker Daemon
+You should then be able to access the main application in your browser at `http://localhost:3030`.
 
-To build Docker images directly within Minikube's Docker environment (avoids pushing to a remote registry for local development):
-```bash
-eval $(minikube -p minikube docker-env)
-```
-Run this command in each terminal where you intend to build and use local images with Minikube.
-To revert, use `eval $(minikube -p minikube docker-env -u)`.
+## Port Configurations for Local Development
 
-## 8. Manage Minikube Cluster
-
-*   **Stop the cluster:**
-```bash
-minikube stop
-```
-*   **Delete the cluster:**
-```bash
-minikube delete
-```
+- **Main Application (`main-app`)**: Runs its web server on port `3030`.
+- **Sonic Server (`sonic-server`)**: Runs its gRPC service on port `50051` (configured by `GRPC_PORT` in `sonic-server/.env`).
+- **MongoDB**: Runs on port `27017`.

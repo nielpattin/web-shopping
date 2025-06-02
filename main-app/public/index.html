@@ -8,7 +8,27 @@
   <style>
     body {
       font-family: sans-serif;
-      margin: 20px;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f5f5f5;
+    }
+
+    .main-content {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #333;
     }
 
     #search-container {
@@ -50,22 +70,151 @@
     li:last-child {
       border-bottom: none;
     }
+    /* Product Card Styles */
+    #product-card {
+      margin-top: 30px;
+      width: 100%;
+      max-width: 500px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e0e0e0;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    #product-card.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .product-card-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .product-card-header h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .product-card-body {
+      padding: 25px;
+    }
+
+    .product-detail {
+      margin-bottom: 20px;
+    }
+
+    .product-detail:last-child {
+      margin-bottom: 0;
+    }
+
+    .product-label {
+      font-weight: 600;
+      color: #555;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .product-value {
+      font-size: 16px;
+      color: #333;
+      line-height: 1.5;
+      background: #f8f9fa;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+
+    .product-category {
+      display: inline-block;
+      background: #e3f2fd;
+      color: #1976d2;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+      
+      .main-content {
+        max-width: 100%;
+      }
+      
+      #search-container {
+        width: 100%;
+        max-width: 302px;
+      }
+      
+      #product-card {
+        border-radius: 8px;
+      }
+      
+      .product-card-header {
+        padding: 15px;
+      }
+      
+      .product-card-header h2 {
+        font-size: 20px;
+      }
+      
+      .product-card-body {
+        padding: 20px;
+      }
+    }
   </style>
 </head>
 
 <body>
-  <h1>Search Products</h1>
-  <div id="search-container">
-    <input type="text" id="search-input" placeholder="Type to search...">
-    <ul id="product-list">
-    </ul>
+  <div class="main-content">
+    <h1>Search Products</h1>
+    <div id="search-container">
+      <input type="text" id="search-input" placeholder="Type to search...">
+      <ul id="product-list">
+      </ul>
+    </div>
+
+    <!-- Product Card Section -->
+    <div id="product-card" style="display: none;">
+    <div class="product-card-header">
+      <h2 id="product-name">Product Name</h2>
+    </div>
+    <div class="product-card-body">
+      <div class="product-detail">
+        <span class="product-label">Description</span>
+        <div class="product-value" id="product-description">Product description will appear here</div>
+      </div>
+      <div class="product-detail">
+        <span class="product-label">Category</span>
+        <div class="product-value">
+          <span class="product-category" id="product-category">Category</span>
+        </div>
+      </div>
+    </div>
+    </div>
   </div>
 
   <script>
     const searchInput = document.getElementById('search-input');
     const productList = document.getElementById('product-list');
     const searchContainer = document.getElementById('search-container');
+    const productCard = document.getElementById('product-card');
+    const productNameEl = document.getElementById('product-name');
+    const productDescriptionEl = document.getElementById('product-description');
+    const productCategoryEl = document.getElementById('product-category');
     let debounceTimeout;
+    let selectedProduct = null;
 
     searchInput.addEventListener('input', () => {
       clearTimeout(debounceTimeout);
@@ -119,18 +268,40 @@
         return;
       }
 
-      products.forEach(product => { 
+      products.forEach(product => {
         const li = document.createElement('li');
         li.textContent = product.name;
-        // TODO: make items clickable, e.g: to fill search or go to product page
+        li.style.cursor = 'pointer';
         li.addEventListener('click', () => {
           searchInput.value = product.name;
           productList.style.display = 'none';
-          // performSearch(product.name); // Optionally navigate
+          showProductCard(product);
         });
         productList.appendChild(li);
       });
       productList.style.display = 'block'; // Show dropdown
+    }
+
+    function showProductCard(product) {
+      selectedProduct = product;
+      
+      // Populate product card with data
+      productNameEl.textContent = product.name || 'Unknown Product';
+      productDescriptionEl.textContent = product.description || 'No description available';
+      productCategoryEl.textContent = product.category || 'Uncategorized';
+      
+      // Show product card with smooth animation
+      productCard.style.display = 'block';
+      setTimeout(() => {
+        productCard.classList.add('show');
+      }, 10);
+    }
+
+    function hideProductCard() {
+      productCard.classList.remove('show');
+      setTimeout(() => {
+        productCard.style.display = 'none';
+      }, 300);
     }
   </script>
 </body>
